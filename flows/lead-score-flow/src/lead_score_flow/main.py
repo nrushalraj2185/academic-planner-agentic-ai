@@ -13,6 +13,7 @@ from lead_score_flow.utils.candidateUtils import combine_candidates_with_scores
 
 
 class LeadScoreState(BaseModel):
+    id: str = "lead_score"
     candidates: List[Candidate] = []
     candidate_score: List[CandidateScore] = []
     hydrated_candidates: List[ScoredCandidate] = []
@@ -46,7 +47,6 @@ class LeadScoreFlow(Flow[LeadScoreState]):
     @listen(or_(load_leads, "scored_leads_feedback"))
     async def score_leads(self):
         print("Scoring leads")
-        tasks = []
 
         async def score_single_candidate(candidate: Candidate):
             result = await (
@@ -67,11 +67,10 @@ class LeadScoreFlow(Flow[LeadScoreState]):
 
         for candidate in self.state.candidates:
             print("Scoring candidate:", candidate.name)
-            task = asyncio.create_task(score_single_candidate(candidate))
-            tasks.append(task)
+            await score_single_candidate(candidate)
+            await asyncio.sleep(12)  # ~5 RPM = 12s per request
 
-        candidate_scores = await asyncio.gather(*tasks)
-        print("Finished scoring leads: ", len(candidate_scores))
+        print("Finished scoring leads: ", len(self.state.candidate_score))
 
     @router(score_leads)
     def human_in_the_loop(self):
